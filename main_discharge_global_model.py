@@ -8,7 +8,7 @@ from scipy.constants import epsilon_0 as eps0
 from scipy.special import jv as bessel 
 from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
-import chabert_global_model_lib as gm
+import global_model_lib as gm
 
 import matplotlib.pyplot as plt
 
@@ -147,8 +147,10 @@ def equations(t, vars, Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, kappa
     Vcoil = 20
     l_cap = lc
     A_cap = 2*np.pi*Rc*l_cap
-    C     = 1
-    Pabs_cap = gm.calculate_PabsV3(ne, ng, Te, sig_el, L, N, R, Rc, lc, Icoil, Vcoil, f, l_cap, A_cap, C )
+    C     = 0
+    Icoilt = gm.Icoil_t(Icoil, f, t)
+    #Icoilt = Icoil
+    Pabs_cap = gm.calculate_PabsV3(ne, ng, Te, sig_el, L, N, R, Rc, lc, Icoilt, Vcoil, f, l_cap, A_cap, C )
     Pabs = Pabs_cap / V
 
     # Breakdown of Ploss
@@ -169,9 +171,12 @@ def equations(t, vars, Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, kappa
 
 ## --- Main function ---
 def main():
+    t_start = 0 # s
+    t_end   = 1e-3 # s
+
     # Initial guesses
-    Te0 = 15     # initial electron temperature, eV
-    Tg0 = 700   # initial gas temperature, K
+    Te0 = 5     # initial electron temperature, eV
+    Tg0 = 100   # initial gas temperature, K
     ne0  = 1e16  # initial gas density, m-3
     ng0 = 1e18  # initial plasma density, m-3
 
@@ -189,19 +194,19 @@ def main():
     M       = gm.Au2kg(Mi)
 
     # Thruster Geometry 
-    R  = 0.015  # Discharge chamber radius, m
-    L  = 0.030   # Discharge chamber length, m
+    R  = 0.06  # Discharge chamber radius, m
+    L  = 0.10   # Discharge chamber length, m
     lc = L/2    # Coil length, m
     t  = 0.001   # Chamber thickness, m
-    Rc = R + t  # Coil radius, m
+    Rc = 0.07  # Coil radius, m
     N  = 5      # number of turns
-    Bi = 0.85    # ion transparency
-    Bg = 0.15    # neutral gas transparency
+    Bi = 0.70    # ion transparency
+    Bg = 0.30    # neutral gas transparency
 
     # Operating points 
     mdot    = 1.25           # Particle flow rate, sccm 
-    #Q0     = 1.2e18     # particle injection rate, s-1
-    Q0      = sccm2atoms(mdot)
+    Q0      = 1.2e19     # particle injection rate, s-1
+    #Q0      = sccm2atoms(mdot)
     Va      = 1500       # grid potential, V
     lg      = 0.00036    # grid separation, m
     f       = 13.56e6    # applied frequency, Hz
@@ -214,7 +219,7 @@ def main():
     fig, axs = plt.subplots(1, 2, figsize=(12,6))
     meth = 'Radau'
     #sol = solve_ivp(test_bed_equations, [0,0.0005], [ne0, ng0, EFg0, EFe0], method=meth)#, max_step=1/(10*f))
-    sol = solve_ivp(equations, [0,0.001], [ne0, ng0, EFg0, EFe0], args = params, method=meth)#, max_step=1/(10*f))
+    sol = solve_ivp(equations, [t_start, t_end], [ne0, ng0, EFg0, EFe0], t_eval=np.linspace(t_start, t_end, 1000), args = params, method=meth)#, max_step=1/(10*f))
     ne_sol = sol.y[0]
     ng_sol = sol.y[1]
     Te_sol = 2*sol.y[3] / (3*ne_sol*kB)
@@ -222,22 +227,25 @@ def main():
     # Plot Results
     
     i = 0
-    t = sol.t * (1e3)
-    axs[i].semilogy(t, sol.y[0], label=f'ne - {meth}')
-    axs[i].semilogy(t, sol.y[1], label=f'ng - {meth}')
+    t = sol.t * f
+    axs[i].semilogy(t, ng_sol, label=f'ng - {meth}')
+    axs[i].semilogy(t, ne_sol, label=f'ne - {meth}')
     axs[i].set_xlabel(r'Time [$ms$]')
     axs[i].set_ylabel(r'Temperature [$eV$]')
     axs[i].grid(which='both')
     axs[i].legend()
 
     i = 1
+    ax_left = axs[i].twinx()
     #axs[i].plot(t, sol.y[0], label=r'$Ionization Fraction$')
-    axs[i].semilogy(t, Tg_sol/11606, label=f'Tg - {meth}')
-    axs[i].semilogy(t, Te_sol/11606, label=f'Te - {meth}')
+    colors = ["tab:blue", "tab:orange"]
+    axs[i].plot(t, Te_sol/11606, color=colors[1], label=f'Te - {meth}')
+    ax_left.plot(t, Tg_sol, color=colors[0], label=f'Tg - {meth}')
     axs[i].set_xlabel(r'Time [$ms$]')
-    axs[i].set_ylabel(r'Temperature [$eV$]')
+    axs[i].set_ylabel(r'Temperature [$eV$]', color=colors[1])
+    ax_left.set_ylabel(r'Neutral Temperature [$K$]', color=colors[0])
     axs[i].grid(which='both')
-    axs[i].legend()
+    #axs[i].legend()
     plt.show()
     print('Program complete.')
     print('Steady State values:')
@@ -247,6 +255,19 @@ def main():
     print(f"Tg = {Tg_sol[-1]:0.2f} K")
     print(f"Te = {gm.K2eV(Te_sol[-1]):0.3f} eV")
 
+def test(t_start, t_end, f_MHz, A):
+    f = f_MHz * (1e6)
+    t = np.linspace(t_start, t_end)
+    I = A * np.sin(2*np.pi*f*t)
+    Igm = gm.Icoil_t(1, 2*np.pi*f, t)
+    plt.plot(t, I)
+    plt.plot(t, Igm, label='Igm')
+    plt.legend()
+    plt.show()
+    return 
+
+
 if __name__ == "__main__":
     main()
+    #test(0, 2e-7, 13.56, 1)
 

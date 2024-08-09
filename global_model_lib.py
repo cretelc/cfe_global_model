@@ -19,6 +19,10 @@ mu_0 = 1.25663706127e-6
 # G     - grid geometry vector [R, L]
 # B     - grid transparencies [Bg, Bi]
 
+def Icoil_t(Icoil_mag, w, t):
+    return Icoil_mag * np.sin(w*t)
+
+
 def calc_hL(L, sig_i, ng):
     lam_i = 0.03
     sig_i = 1e-18
@@ -169,7 +173,7 @@ def calculate_PabsV3(ne, ng, Te,  sig_el, L, N, R, Rc, lc, Icoil, Vcoil, f, l_ca
         Rstoch = calculate_Rstoch(ne, Te, ve, A_cap, Vcoil)
         Rcap = calculate_Rcap(Rohm, Rstoch)
         Lind = calculate_Lind(L, N, R, Rc, Lcoil, f, k, ep)
-        Pabs = (1/2) * (Rind + ((w**2 * Lind * C)**2) * Rcap)*Icoil**2
+        Pabs = (1/2) * (Rind + ((w**2 * Lind * C)**2) * Rcap)*(Icoil**2)
     else:
         Pabs = (1/2) * Rind * (Icoil**2)
 
