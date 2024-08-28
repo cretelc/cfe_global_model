@@ -96,6 +96,7 @@ def equations_MT(t, vars, Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, ka
     # Calculated Parameters
     Kiz   = gm.calculate_Kiz(Te, Eiz)
     Kel   = 1e-13
+    
     Kin   = gm.calculate_Kin(Tg, M, sig_i)
     Kexc  = gm.calculate_Kex(Te, Eexc) # only shows up in Ploss equation
     V     = gm.calculate_Vol(R, L)
@@ -112,7 +113,8 @@ def equations_MT(t, vars, Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, ka
     k0   = gm.calculate_k0(f)
     wpe  = gm.calculate_wpe(ne)
     ve   = gm.calculate_v(Te, me)
-    mu_m = gm.calculate_mu_m(ng, ve, sig_el)
+    sig_el_e = 2e-19 # electorn-xenon average elastic collision
+    mu_m = gm.calculate_mu_m(ng, ve, sig_el_e)
     ep   = gm.calculate_eps_p(wpe, f, mu_m)
     k    = gm.calculate_k(k0, ep)
     Rind = gm.calculate_Rind(L, N, R, f, k, ep)
@@ -144,46 +146,76 @@ def main():
 
     # Start and End Time
     t_start = 0 # s
-    t_end   = 5e-5 # s
+    t_end   = 1e-4 # s
 
     # Initial guesses
-    Te0 = 5     # initial electron temperature, eV
-    Tg0 = 100   # initial gas temperature, K
-    ne0 = 5e17  # initial gas density, m-3
-    ng0 = 1e18 # initial plasma density, m-3
-
+    # Electron Tempearture (eV)
+    Te0 = 5     
+    # neutral Temperature (K)
+    Tg0 = 100   
+    # Electron density (m-3)
+    ne0 = 5e17  
+    # Neutral Density (m-3)
+    ng0 = 1e18 
+    # Electron energy flux
     EFe0 = (3/2) * (ne0*kB*gm.eV2K(Te0))
+    # Neutral energy flux
     EFg0 = (3/2) * (ng0*kB*Tg0)
 
-    # Plasma constants 
-    sig_i   = 1e-18 # used as the global variable for elastic and cex cross sections
+    ## Plasma constants
+    # Global heavy-species cross section (CEX, elastic)  
+    sig_i   = 1e-18 
+    # Elastic collision cross section
     sig_el  = sig_i
+    # Electron-heavy elastic cross section 
+    sig_el_e = 2e-19 
+    # Gas thermal conductivity 
     kappa   = 0.0057 # xenon thermal conductivity
+    # Excitation Energy (Xe)
     Eexc    = 11.6
+    # Ionization Energy (Xe)
     Eiz     = 12.127
+    # Elastic collision rate 
     Kel     = 1e-13     # m3 s-1 
+    # Propellant molecular mass 
     Mi      = 131
     M       = gm.Au2kg(Mi)
 
-    # Thruster Geometry 
-    R  = 0.0075  # Discharge chamber radius, m
-    L  = 0.015   # Discharge chamber length, m
-    lc = L     # Coil length, m
-    t  = 0.001   # Chamber thickness, m
-    Rc = 0.008  # Coil radius, m
-    N  = 5      # number of turns
-    Bi = 0.70    # ion transparency
-    Bg = 0.30    # neutral gas transparency
+    ## Thruster Geometry
+    # Discharge chamber radius, m 
+    R  = 0.06  
+    # Discharge chamber length, m
+    L  = 0.1   
+    # Coil length, m
+    lc = L     
+    # Chamber thickness, m
+    t  = 0.001   
+    # Coil radius, m
+    Rc = 0.08  
+    # number of turns
+    N  = 5
+    # ion transparency
+    Bi = 0.70    
+    # neutral gas transparency
+    Bg = 0.30     
 
-    # Operating points 
-    mdot    = 1.25           # Particle flow rate, sccm 
-    #Q0      = 1.2e19     # particle injection rate, s-1
-    Q0      = sccm2atoms(mdot)
-    Va      = 1500       # grid potential, V
-    lg      = 0.00036      # grid separation, m
-    f       = 13.56e6    # applied frequency, Hz
-    Icoil   = 5         # current amplitude in the coil, A
-    Tw      = 400        # wall temperature, K
+    ## Operating points 
+    # Flow rate (SCCM)
+    #mdot    = 1.25
+    # Flow rate (atoms/s)   
+    #Q0      = sccm2atoms(mdot)
+    # Flow rate (atoms/s)         
+    Q0      = 1.2e19     
+    # Grd Potential (V)
+    Va      = 1000       
+    # Grid Separation (m)
+    lg      = 0.001      
+    # Applied frequency (MHz)
+    f       = 13.56e6    
+    # Coil Current Amplitude (A)
+    Icoil   = 5         
+    # Wall temperature (K)
+    Tw      = 400        
 
 
     params = (Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, kappa, Icoil, f, sig_el, sig_i)
@@ -191,15 +223,16 @@ def main():
     T = 1/(2*np.pi*f)
     #max_stepsizes = [T, T/3, T/5, T/20]
     #max_stepsizes_str = ['1/f', '1/3f', '1/5f', '1/20f']
-    runtimes = [0, 0, 0,0]
+    runtimes = [0, 0, 0, 0]
     ls = ['-', '--', '-.', ':']
     fig1, axs1 = plt.subplots(2, 1, figsize=(12,6))
     ax1_left1 = axs1[0].twinx()
     ax1_left2 = axs1[1].twinx()
 
-
-    ms = T/10
-    Is = [2]
+    ms = T/5
+    Is = [25]
+    #Is = np.logspace(-1, 2)
+    #results = np.zeros((4, len(Is)))
     for j,Icoil in enumerate(Is):
         params = (Eiz, Eexc, M, N, R, Rc, lc, L, Q0, Bi, Bg, Kel, Tw, kappa, Icoil, f, sig_el, sig_i)
         t0 = perf_counter()
@@ -208,24 +241,8 @@ def main():
         
         sol_CC = solve_ivp(equations,    [t_start, t_end], [ne0, ng0, EFg0, EFe0], t_eval=np.linspace(t_start, t_end, 10000), args = params, method=meth, max_step=ms)
         runtimes[j] = perf_counter() - t0
-        '''
-        ne_sol_MT = sol_MT.y[0]
-        ng_sol_MT = sol_MT.y[1]
-        Te_sol_MT = 2*sol_MT.y[3] / (3*ne_sol_MT*kB)
-        Tg_sol_MT = 2*sol_MT.y[2] / (3*ng_sol_MT*kB)
-        
-        ne_sol_CC = sol_CC.y[0]
-        ng_sol_CC = sol_CC.y[1]
-        Te_sol_CC = 2*sol_CC.y[3] / (3*ne_sol_CC*kB)
-        Tg_sol_CC = 2*sol_CC.y[2] / (3*ng_sol_CC*kB)
 
-        fig, axs = plt.subplots(1, 2)
-        axs[0].plot(100*(ng_sol_MT - ng_sol_CC)/ng_sol_MT)
-        axs[1].plot(100*(Tg_sol_MT - Tg_sol_CC)/Tg_sol_MT)
-        plt.show()
-        '''
-        # Plot Results
-        
+        # Plot Results        
         ne_sol = sol_CC.y[0]
         ng_sol = sol_CC.y[1]
         Te_sol = 2*sol_CC.y[3] / (3*ne_sol*kB)

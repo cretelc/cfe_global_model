@@ -104,10 +104,15 @@ def calculate_wpe(n):
     ''' Calculates electron frequency '''
     return np.sqrt((n * q**2) / (me * eps0))
 
-def calculate_mu_m(ng, ve, sig_el):
-    ''' Calculates mean collision frequency '''
-    return ng * sig_el * ve
+#def calculate_mu_m(ng, ve, sig_el):
+#    ''' Calculates mean collision frequency '''
+#    # Electron elastic scattering cross section (Date2003, Dababneh1980, Hayashi1982)
+#    return ng * sig_el * ve
 
+def calculate_mu_m(ng, Kel):
+    ''' Calculates mean collision frequency '''
+    # Electron elastic scattering cross section (Date2003, Dababneh1980, Hayashi1982)
+    return ng * Kel
 def calculate_v(T, m):
     ''' Calculates thermal velocity '''
     return np.sqrt(8*kB*T / (np.pi*m))
@@ -169,10 +174,11 @@ def calculate_PabsV2(V, Rind, Icoil, f, Lind, Rcap, C=0):
 
 def calculate_PabsV3(t, ne, ng, Te, sig_el, L, N, R, Rc, lc, Icoil, f, l_cap, A_cap, C):
     w = 2 * np.pi * f
-    
+    Kel = 1e-13
     wpe  = calculate_wpe(ne)
     ve   = calculate_v(Te, me)
-    mu_m = calculate_mu_m(ng, ve, sig_el)
+    #mu_m = calculate_mu_m(ng, ve, sig_el)
+    mu_m = calculate_mu_m(ng, Kel)
     ep   = calculate_eps_p(wpe, f, mu_m)
     k0   = calculate_k0(f)
     k    = calculate_k(k0, ep)
@@ -194,10 +200,11 @@ def calculate_PabsV3(t, ne, ng, Te, sig_el, L, N, R, Rc, lc, Icoil, f, l_cap, A_
 
 def calculate_PabsV3_MT(t, ne, ng, Te, sig_el, L, N, R, Rc, lc, Icoil, f, l_cap, A_cap, C):
     w = 2 * np.pi * f
-    
+    Kel = 1e-13
     wpe  = calculate_wpe(ne)
     ve   = calculate_v(Te, me)
-    mu_m = calculate_mu_m(ng, ve, sig_el)
+    #mu_m = calculate_mu_m(ng, ve, sig_el)
+    mu_m = calculate_mu_m(ng, Kel)
     ep   = calculate_eps_p(wpe, f, mu_m)
     k0   = calculate_k0(f)
     k    = calculate_k(k0, ep)
@@ -245,6 +252,9 @@ def calculate_Lam0(R, L):
 
 def calculate_A(R, L):
     return 2 * np.pi *R**2 + 2 * np.pi *R*L
+
+def calculate_Ai(Bi, R):
+    return Bi * np.pi * R**2
 
 
 
